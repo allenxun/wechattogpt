@@ -1,0 +1,92 @@
+ssh -i "allenwebforwechat.pem" ubuntu@ec2-3-144-235-63.us-east-2.compute.amazonaws.com
+mysql -u allensql -h ec2-18-119-19-73.us-east-2.compute.amazonaws.com -p
+
+
+EncodingAESKey: YEnrhPSTCduWid1mpyaRjoRYPYZSFmcqf6iNnUCxgVW
+
+
+###第一步:安装python3
+sudo apt -y install python3
+sudo apt -y install python3-pip
+sudo -H pip3 install --upgrade pip
+sudo -H pip3 install virtualenv virtualenvwrapper
+sudo apt -y install python3-dev libmysqlclient-dev
+
+echo "export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3" >> ~/.bashrc
+echo "export WORKON_HOME=~/Env" >> ~/.bashrc
+echo "source /usr/local/bin/virtualenvwrapper.sh" >> ~/.bashrc
+source ~/.bashrc
+
+mkvirtualenv wechatapi
+pip3 install django
+pip3 install mysqlclient
+pip3 install wechatpy
+pip3 install cryptography
+
+cd ~
+django-admin startproject wechatapi
+cd ~/wechatapi
+python3 manage.py startapp api
+python3 ~/wechatapi/manage.py migrate
+python3 ~/wechatapi/manage.py createsuperuser  ####password webchat521
+
+vim ~/wechatapi/wechatapi/settings.py
+
+python3 ~/wechatapi/manage.py collectstatic
+
+python3 /home/ubuntu/wechatapi/manage.py runserver 0.0.0.0:80
+
+sudo ufw allow 8080
+
+###第二步:安装uwsgi并构建uwsgi服务
+sudo -H pip3 install uwsgi
+        ###/root/Env/wechatapi/bin/uwsgi --http :8080 --home /root/Env/wechatapi --chdir /root/wechatapi -w wechatapi.wsgi
+
+sudo mkdir -p /etc/uwsgi/sites
+sudo vim /etc/uwsgi/sites/wechatapi.ini
+
+sudo vim /etc/systemd/system/uwsgi.service
+        whereis uwsgi
+        ExecStart=/root/Env/wechatapi/bin/uwsgi --emperor /etc/uwsgi/sites
+
+###第三步:安装nginx并构建nginx服务
+sudo apt -y install nginx
+
+sudo vim /etc/nginx/sites-available/wechatapi
+
+sudo ln -s /etc/nginx/sites-available/wechatapi /etc/nginx/sites-enabled
+
+###第四步:启动服务
+sudo apt -y install systemctl
+sudo nginx -t
+sudo systemctl start uwsgi
+sudo systemctl start nginx
+
+- ../nginx/wechatapi:/etc/nginx/sites-available/wechatapi
+
+sudo systemctl enable nginx
+sudo systemctl enable nginx
+
+###第五步:错误处理
+sudo systemctl status nginx
+sudo tail -F /var/log/nginx/error.log
+
+sudo systemctl status uwsgi
+sudo journalctl -u uwsgi
+
+
+###第六步:创建数据库
+create database wechatapi default character set utf8 collate utf8_general_ci;
+
+create user 'allensql'@'%' identified by '20230322yubo';
+grant all privileges on wechatapi.* to 'allensql'@'%';
+flush privileges;
+
+
+###使用postgresql
+sudo apt -y install libpq-dev python-dev
+pip3 isntall psycopg2
+pip3 install psycopg2-binary
+sudo apt-get install postgresql-client-common
+sudo apt-get install postgresql-client
+psql --host=wechat-gpt-01.csxfrke2txg4.us-east-2.rds.amazonaws.com --port=5432 --username=allensql --password --dbname=allensql

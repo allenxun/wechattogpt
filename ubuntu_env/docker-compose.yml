@@ -1,0 +1,34 @@
+version: '3'
+services:
+  wechat_chatGPT:
+    container_name: wechatapi
+    restart: always
+    image: allenxun/webchatapi:0.2
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/wechatapi:/etc/nginx/nginx.conf
+      - ../uwsgi/wechatapi.ini:/etc/uwsgi/sites/wechatapi.ini
+      - ../systemctl_config/uwsgi.service:/etc/systemd/system/uwsgi.service
+      - ../wechatapi:/root/wechatapi
+    command: /bin/bash -c "systemctl start uwsgi && systemctl start nginx && tail -f /dev/null"
+
+
+  storage:
+    restart: always
+    image: allenxun/storage:0.1
+    container_name: storage
+    volumes:
+      - ./storage/mydir:/mydir
+      - ./storage/data:/var/lib/mysql
+      - ./storage/conf/my.cnf:/etc/my.cnf
+      - ./storage/source:/docker-entrypoint-initdb.d
+    environment:
+      - "MYSQL_HOST=storage"
+      - "MYSQL_PORT=3306"
+      - "MYSQL_USER=ht"
+      - "MYSQL_ROOT_PASSWORD=ht123456"
+      - "MYSQL_DATABASE=mydata"
+      - "TZ=Asia/Shanghai"
+    ports:
+      - 3306:3306

@@ -1,0 +1,26 @@
+user    root;
+
+events {
+  worker_connections  4096;
+}
+
+http {
+    server {
+        listen 80;
+        server_name localhost;
+
+        location = /favicon.ico { access_log off; log_not_found off; }
+        location /static/ {
+            root /root/wechatapi;
+        }
+
+        location / {
+            include         uwsgi_params;
+            uwsgi_pass      unix:///run/uwsgi/wechatapi.sock;
+        }
+        location /api {
+            include         uwsgi_params;
+            uwsgi_pass      unix:///run/uwsgi/wechatapi.sock;
+        }
+    }
+}
